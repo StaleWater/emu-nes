@@ -281,9 +281,14 @@ impl CPU {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run_with_callback<F: FnMut(&mut CPU)>(&mut self, callback: F)
+    {
         self.reset();
-        self.exec();
+        self.exec(callback);
+    }
+
+    pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
     }
 
     pub fn reset(&mut self) {
@@ -410,9 +415,11 @@ impl CPU {
         addr
     } 
 
-    fn exec(&mut self) {
+    fn exec<F: FnMut(&mut CPU)>(&mut self, mut callback: F) {
 
         loop {
+            callback(self);
+
             let opcode = self.read_mem(self.pc); 
             
             let opcode: &Opcode = opcode_lookup(opcode).expect("ran into unknown opcode");

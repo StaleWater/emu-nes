@@ -6,9 +6,9 @@ fn main() {
 
     let mut cpu = CPU::new();
     cpu.load(program);
-    cpu.run();
+    cpu.run_with_callback(|_cpu| {
+        //do things here
+    });
 
-    println!("{:?}", cpu.a);
-    println!("{:?}", cpu.status);
 }
 
