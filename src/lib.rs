@@ -66,6 +66,7 @@ impl From<StatusRegister> for u8 {
     }
 }
 
+#[derive(Debug)]
 enum AddrMode {
     Imm,
     ZeroPage,
@@ -82,6 +83,7 @@ enum AddrMode {
     Accumulator,
 }
 
+#[derive(Debug)]
 enum OCName {
     ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, 
     BPL, BRK, BVC, BVS, CLC, CLD, CLI, CLV, CMP,
@@ -92,6 +94,7 @@ enum OCName {
     TXS, TYA,
 }
 
+#[derive(Debug)]
 struct Opcode {
     hex: u8,
     name: OCName,
@@ -307,22 +310,22 @@ impl CPU {
     }
 
     #[inline]
-    fn read_mem(&self, addr: u16) -> u8 {
+    pub fn read_mem(&self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
 
-    fn read_mem16(&self, addr: u16) -> u16 {
+    pub fn read_mem16(&self, addr: u16) -> u16 {
         let l = self.read_mem(addr) as u16;
         let h = self.read_mem(addr + 1) as u16;
         h << 8 | l
     }
 
     #[inline]
-    fn write_mem(&mut self, addr: u16, val: u8) {
+    pub fn write_mem(&mut self, addr: u16, val: u8) {
         self.memory[addr as usize] = val;
     }
 
-    fn write_mem16(&mut self, addr: u16, val: u16) {
+    pub fn write_mem16(&mut self, addr: u16, val: u16) {
         let l = (val & 0xFF) as u8;
         let h = (val >> 8) as u8;
         self.write_mem(addr, l);
@@ -488,8 +491,14 @@ impl CPU {
                AddrMode::Implied | AddrMode::Accumulator => 1, 
                AddrMode::Absolute | AddrMode::AbsoluteX | AddrMode::AbsoluteY => 3,
                _ => 2
-            }
+            };
+
         }
+    }
+
+    fn pc_add_signed(&mut self, n: i8) {
+        if n < 0 { self.pc -= (n * -1) as u16;}
+        else { self.pc += n as u16;}
     }
 
     fn signed_overflow(a: u8, b: u8, result: u8) -> bool {
@@ -509,10 +518,12 @@ impl CPU {
     }
 
     fn sub_cv(a: u8, b: u8, cin: bool) -> (u8, bool, bool) {
-        let nb = !b + 1;
+        let nb = !b;
+        let nb = nb.wrapping_add(1);
         let (sum1, c1) = a.overflowing_add(nb);
         let v1 = CPU::signed_overflow(a, nb, sum1);
-        let ncin = !((!cin) as u8) + 1;
+        let ncin = !((!cin) as u8);
+        let ncin = ncin.wrapping_add(1);
         let (sum2, c2) = sum1.overflowing_add(ncin);
         let cout = !(c1 || c2);
         let vout = v1 || ((sum1 >> 7) == 1 && (sum2 >> 7) == 0);
@@ -554,15 +565,15 @@ impl CPU {
     }
 
     fn bcc(&mut self) {
-        if !self.status.carry {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if !self.status.carry {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn bcs(&mut self) {
-        if self.status.carry {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if self.status.carry {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn beq(&mut self) {
-        if self.status.zero {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if self.status.zero {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn bit(&mut self, mode: &AddrMode) {
@@ -574,23 +585,23 @@ impl CPU {
     }
 
     fn bmi(&mut self) {
-        if self.status.negative {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if self.status.negative {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn bne(&mut self) {
-        if !self.status.zero {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if !self.status.zero {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn bpl(&mut self){
-        if !self.status.negative {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if !self.status.negative {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn bvc(&mut self) {
-        if !self.status.overflow {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if !self.status.overflow {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn bvs(&mut self) {
-        if self.status.overflow {self.pc += self.read_mem(self.pc + 1) as u16;}
+        if self.status.overflow {self.pc_add_signed(self.read_mem(self.pc + 1) as i8);}
     }
 
     fn clc(&mut self) {
@@ -686,13 +697,14 @@ impl CPU {
                 panic!("unexpected addressing mode in JMP");
             }
         };
+        self.pc -= 3;
     }
 
     fn jsr(&mut self) {
         let go_to = self.read_mem16(self.pc + 1);
         let return_point = self.pc + 2;
         self.sp_push16(return_point);
-        self.pc = go_to;
+        self.pc = go_to - 3;
     }
 
     fn lda(&mut self, mode: &AddrMode) {
