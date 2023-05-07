@@ -63,10 +63,10 @@ fn main() {
             canvas.present();
         }
 
-        std::thread::sleep(std::time::Duration::new(0, 70000));
+        std::thread::sleep(std::time::Duration::new(0, 40000));
     });
 
-    println!("DONE FOR SOME REASON");
+    println!("CLOSING");
 
 }
 

@@ -428,6 +428,9 @@ impl CPU {
             let opcode: &Opcode = opcode_lookup(opcode).expect("ran into unknown opcode");
             let mode: &AddrMode = &opcode.mode;
 
+            //println!("RUNNING {0}", self.pc);
+            //println!("OPCODE: {:?}", opcode);
+
             match opcode.name {
                 OCName::ADC => self.adc(mode),
                 OCName::AND => self.and(mode),
@@ -518,13 +521,15 @@ impl CPU {
     }
 
     fn sub_cv(a: u8, b: u8, cin: bool) -> (u8, bool, bool) {
+        let c1 = a < b;
         let nb = !b;
         let nb = nb.wrapping_add(1);
-        let (sum1, c1) = a.overflowing_add(nb);
+        let sum1 = a.wrapping_add(nb);
         let v1 = CPU::signed_overflow(a, nb, sum1);
         let ncin = !((!cin) as u8);
         let ncin = ncin.wrapping_add(1);
-        let (sum2, c2) = sum1.overflowing_add(ncin);
+        let c2 = !cin && sum1 < 1;
+        let sum2 = sum1.wrapping_add(ncin);
         let cout = !(c1 || c2);
         let vout = v1 || ((sum1 >> 7) == 1 && (sum2 >> 7) == 0);
         (sum2, cout, vout)
