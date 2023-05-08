@@ -6,6 +6,7 @@ use sdl2::pixels::Color;
 use rand::Rng;
 
 use emu_nes::CPU;
+use emu_nes::Memory;
 
 fn main() {
     const SCALE: u32 = 10;

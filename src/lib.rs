@@ -1,4 +1,77 @@
 
+const CPU_RAM_START: u16 = 0x0000;
+const CPU_RAM_MIRRORS_END: u16 = 0x1FFF;
+const PPU_REGISTERS_START: u16 = 0x2000;
+const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
+
+pub trait Memory {
+    fn read_mem(&self, addr: u16) -> u8;
+    fn read_mem16(&self, addr: u16) -> u16;
+    fn write_mem(&mut self, addr: u16, val: u8);
+    fn write_mem16(&mut self, addr: u16, val: u16);
+}
+
+pub struct Bus {
+    pub cpu_ram: [u8; 2048],
+}
+
+impl Bus {
+    fn new() -> Bus {
+        Bus {
+            cpu_ram: [0; 2048],
+        }
+    }
+}
+
+impl Memory for Bus {
+    fn read_mem(&self, addr: u16) -> u8 {
+        match addr {
+            CPU_RAM_START..=CPU_RAM_MIRRORS_END => {
+                let addr = addr & 0x07FF; // map mirrors to original by keeping bottom 11 bits
+                self.cpu_ram[addr as usize]
+            }
+            PPU_REGISTERS_START..=PPU_REGISTERS_MIRRORS_END => {
+                let _addr = addr & 0x2007;
+                todo!("NO PPU YET CHILL MAN");
+            }
+            _ => {
+                println!("Invalid memory read");
+                0
+            }
+        }
+    }
+
+    fn read_mem16(&self, addr: u16) -> u16 {
+        let l = self.read_mem(addr) as u16;
+        let h = self.read_mem(addr + 1) as u16;
+        (h << 8) | l
+    }
+
+    fn write_mem(&mut self, addr: u16, val: u8) {
+        match addr {
+            CPU_RAM_START..=CPU_RAM_MIRRORS_END => {
+                let addr = addr & 0x07FF; 
+                self.cpu_ram[addr as usize] = val;
+            }
+            PPU_REGISTERS_START..=PPU_REGISTERS_MIRRORS_END => {
+                let _addr = addr & 0x2007;
+                todo!("NO PPU YET CHILL MAN");
+            }
+            _ => {
+                println!("Invalid memory write");
+            }
+        }
+    }
+
+    fn write_mem16(&mut self, addr: u16, val: u16) {
+        let l = (val & 0x00FF) as u8;
+        let h = (val >> 8) as u8;
+        self.write_mem(addr, l);
+        self.write_mem(addr + 1, h);
+    }
+
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct StatusRegister {
     carry: bool,
@@ -268,7 +341,25 @@ pub struct CPU {
     pub x: u8,
     pub y: u8,
     pub status: StatusRegister,
-    memory: [u8; 0xFFFF],
+    pub bus: Bus,
+}
+
+impl Memory for CPU {
+    fn read_mem(&self, addr: u16) -> u8 {
+        self.bus.read_mem(addr)
+    }
+    
+    fn read_mem16(&self, addr: u16) -> u16 {
+        self.bus.read_mem16(addr)
+    }
+
+    fn write_mem(&mut self, addr: u16, val: u8) {
+        self.bus.write_mem(addr, val);
+    }
+
+    fn write_mem16(&mut self, addr: u16, val: u16) {
+        self.bus.write_mem16(addr, val);
+    }
 }
 
 impl CPU {
@@ -280,7 +371,7 @@ impl CPU {
             x: 0,
             y: 0,
             status: StatusRegister::new(),
-            memory: [0; 0xFFFF],
+            bus: Bus::new(),
         }
     }
 
@@ -305,31 +396,8 @@ impl CPU {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
+        self.bus.cpu_ram[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
         self.write_mem16(0xFFFC, 0x0600);
-    }
-
-    #[inline]
-    pub fn read_mem(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
-    }
-
-    pub fn read_mem16(&self, addr: u16) -> u16 {
-        let l = self.read_mem(addr) as u16;
-        let h = self.read_mem(addr + 1) as u16;
-        h << 8 | l
-    }
-
-    #[inline]
-    pub fn write_mem(&mut self, addr: u16, val: u8) {
-        self.memory[addr as usize] = val;
-    }
-
-    pub fn write_mem16(&mut self, addr: u16, val: u16) {
-        let l = (val & 0xFF) as u8;
-        let h = (val >> 8) as u8;
-        self.write_mem(addr, l);
-        self.write_mem(addr + 1, h);
     }
 
     fn sp_push(&mut self, n: u8) {
