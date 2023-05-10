@@ -5,8 +5,9 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use rand::Rng;
 
-use emu_nes::CPU;
-use emu_nes::Memory;
+use emu_nes::cpu::CPU;
+use emu_nes::mem::Memory;
+use emu_nes::mem::rom::ROM;
 
 fn main() {
     const SCALE: u32 = 10;
@@ -52,8 +53,16 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    let mut cpu = CPU::new();
-    cpu.load(program);
+    let rom = ROM::program(program);
+    let mut cpu = CPU::new(rom);
+
+    match cpu.load_prg_rom() {
+        Err(e) => {
+            panic!("{0}", e);
+        },
+        Ok(_) => {}
+    }
+
     cpu.run_with_callback(move |cpu| {
         handle_input(cpu, &mut event_pump);
         cpu.write_mem(0xfe, rng.gen_range(1..16));
