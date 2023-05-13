@@ -5,8 +5,8 @@ pub enum Mirroring {
 }
 
 const NES_MAGIC: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
-const PRG_ROM_PAGE_SIZE: usize = 16000;
-const CHR_ROM_PAGE_SIZE: usize = 8000;
+const PRG_ROM_PAGE_SIZE: usize = 0x4000;
+const CHR_ROM_PAGE_SIZE: usize = 0x2000;
 
 pub struct ROM {
     pub prg_rom: Vec<u8>,

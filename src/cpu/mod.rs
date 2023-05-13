@@ -119,6 +119,7 @@ impl CPU {
 
     pub fn run_with_callback<F: FnMut(&mut CPU)>(&mut self, callback: F)
     {
+        self.reset();
         self.exec(callback);
     }
 
