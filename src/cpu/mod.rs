@@ -181,6 +181,11 @@ impl CPU {
         (h << 8) | l
     }
 
+    pub fn print_state(&self) {
+        let op: &Opcode = opcode_lookup(self.read_mem(self.pc)).expect("unknown opcode");
+        print!("OPCODE: {:#4x} {:?} ", op.hex, op.name);
+        print!("a: {}, x: {}, y: {}, pc: {}, sp: {}\n", self.a, self.x, self.y, self.pc, self.sp);
+    }
 
 
     #[inline]

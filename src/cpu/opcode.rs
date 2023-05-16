@@ -28,7 +28,7 @@ pub enum OCName {
 
 #[derive(Debug)]
 pub struct Opcode {
-    hex: u8,
+    pub hex: u8,
     pub name: OCName,
     pub mode: AddrMode,
     pub ncycles: u16

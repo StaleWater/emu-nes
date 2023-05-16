@@ -43,6 +43,7 @@ fn main() {
     //}
 
     cpu.run_with_callback(move |cpu| {
+        cpu.print_state();
         handle_input(cpu, &mut event_pump);
         cpu.write_mem(0xfe, rng.gen_range(1..16));
 
