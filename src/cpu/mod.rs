@@ -5,7 +5,7 @@ mod cpu_tests;
 
 use crate::mem::{Memory, Bus};
 use crate::mem::rom::ROM;
-use self::opcode::{AddrMode, Opcode, OCName, opcode_lookup};
+use self::opcode::{AddrMode, Opcode, OCName, opcode_lookup, opcode_byte_size};
 
 
 #[derive(Debug, Copy, Clone)]
@@ -19,7 +19,7 @@ pub struct StatusRegister {
     negative: bool,
 }
 
-impl StatusRegister {
+impl StatusRegister { 
     fn new() -> StatusRegister {
         StatusRegister {
             carry: false,
@@ -183,8 +183,19 @@ impl CPU {
 
     pub fn print_state(&self) {
         let op: &Opcode = opcode_lookup(self.read_mem(self.pc)).expect("unknown opcode");
-        print!("OPCODE: {:#4x} {:?} ", op.hex, op.name);
-        print!("a: {}, x: {}, y: {}, pc: {}, sp: {}\n", self.a, self.x, self.y, self.pc, self.sp);
+        let nbytes = opcode_byte_size(op);
+        let p: u8 = self.status.into();
+        
+        print!("{:04X} ", self.pc);
+        
+        for i in 0..nbytes {
+            print!("{:02X} ", self.read_mem(self.pc + (i as u16)));
+        }
+        for _ in 0..(3 - nbytes) {
+            print!("   ");
+        }
+        print!(" {:?}     ", op.name);
+        print!("A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}\n", self.a, self.x, self.y, p, self.sp);
     }
 
 
@@ -315,14 +326,10 @@ impl CPU {
                 OCName::TYA => self.tya(),
             }
 
-            self.pc += match mode {
-               AddrMode::Implied | AddrMode::Accumulator => 1, 
-               AddrMode::Absolute | AddrMode::AbsoluteX | AddrMode::AbsoluteY => 3,
-               _ => 2
-            };
-
+            self.pc += opcode_byte_size(opcode) as u16;
         }
     }
+
 
     fn pc_add_signed(&mut self, n: i8) {
         if n < 0 { self.pc -= (n * -1) as u16;}

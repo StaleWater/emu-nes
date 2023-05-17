@@ -190,7 +190,14 @@ static OPCODES: [Opcode; 151] = [
 ];
 
 pub fn opcode_lookup(hex: u8) -> Option<&'static Opcode> {
-        OPCODES.iter().filter(|op| op.hex == hex).next()
+    OPCODES.iter().filter(|op| op.hex == hex).next()
 }
 
+pub fn opcode_byte_size(op: &Opcode) -> usize {
+   match op.mode {
+       AddrMode::Implied | AddrMode::Accumulator => 1, 
+       AddrMode::Absolute | AddrMode::AbsoluteX | AddrMode::AbsoluteY => 3,
+       _ => 2
+    }
+}
 
